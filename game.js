@@ -381,7 +381,8 @@ function drawPlayer() {
   ctx.font = `${PLAYER_SIZE}px serif`;
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'bottom';
-  if (player.facing === -1) {
+  if (player.facing === 1) {
+    // 🏃 is left-facing by default → flip horizontally to face right
     ctx.translate(player.x, player.y);
     ctx.scale(-1, 1);
     ctx.fillText(PLAYER_EMOJI, 0, 0);
