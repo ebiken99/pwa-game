@@ -123,8 +123,11 @@ bindBtn(rightBtn, 'right');
 // Canvas resize
 // ============================================================
 function resizeCanvas() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
+  // Use the container's actual rendered size (reliable on both iOS & Android).
+  // The container is position:fixed;inset:0 so it always matches the visual viewport.
+  const container = canvas.parentElement;
+  canvas.width  = container.offsetWidth  || window.innerWidth;
+  canvas.height = container.offsetHeight || window.innerHeight;
   player.x = canvas.width  / 2;
   player.y = canvas.height - GROUND_H - 4;
   initClouds();

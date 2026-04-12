@@ -9,44 +9,41 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  /* iOS Safari: prevent scroll bounce */
   overscroll-behavior: none;
   -webkit-overflow-scrolling: auto;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
   font-family: 'Hiragino Kaku Gothic Pro', 'Noto Sans JP', 'Arial', sans-serif;
+  background: #87CEEB;
 }
 
-/* ===== Game Container ===== */
+/* ===== Game Container =====
+   position:fixed + inset:0 is the only reliable way to fill
+   the full screen on both iOS and Android (avoids all dvh / fill-available bugs).
+*/
 #game-container {
-  position: relative;
-  width: 100%;
-  /* 100dvh works on iOS 15.4+; fall back to -webkit-fill-available for older */
-  height: 100vh;
-  height: 100dvh;
-  height: -webkit-fill-available;
+  position: fixed;
+  inset: 0;
   overflow: hidden;
   background: #87CEEB;
-  /* Respect notch / home indicator on iPhone */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ===== Canvas ===== */
 #gameCanvas {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
 }
 
-/* ===== HUD ===== */
+/* ===== HUD =====
+   Push below the status bar via safe-area-inset-top.
+*/
 #hud {
   position: absolute;
-  top: 12px;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
   left: 0;
   right: 0;
   display: flex;
@@ -59,38 +56,40 @@ html, body {
 .hud-item {
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
-  padding: 6px 16px;
+  padding: 6px 14px;
   border-radius: 20px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: bold;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+  white-space: nowrap;
 }
 
-/* ===== Touch Controls ===== */
+/* ===== Touch Controls =====
+   Sit just above the home indicator.
+*/
 #controls {
   position: absolute;
-  bottom: calc(55px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
   left: 0;
   right: 0;
   display: flex;
   justify-content: space-between;
-  padding: 0 calc(24px + env(safe-area-inset-left, 0px))
-              0 calc(24px + env(safe-area-inset-right, 0px));
+  padding: 0 28px;
   pointer-events: none;
   z-index: 10;
 }
 
 .ctrl-btn {
-  width: 80px;
-  height: 80px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, 0.6);
   background: rgba(255, 255, 255, 0.35);
   color: #333;
-  font-size: 32px;
+  font-size: 30px;
   cursor: pointer;
   pointer-events: all;
   touch-action: none;
@@ -132,9 +131,9 @@ html, body {
 #overlay-content {
   background: linear-gradient(145deg, #fffde7, #fff9c4, #ffe082);
   border-radius: 24px;
-  padding: 36px 44px;
+  padding: 32px 40px;
   text-align: center;
-  max-width: min(420px, 90vw);
+  max-width: min(400px, 88vw);
   width: 100%;
   box-shadow: 0 12px 48px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.5);
   animation: overlayPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -146,8 +145,8 @@ html, body {
 }
 
 #overlay-emoji {
-  font-size: 64px;
-  margin-bottom: 10px;
+  font-size: 60px;
+  margin-bottom: 8px;
   animation: bounce 1.2s ease-in-out infinite;
 }
 
@@ -157,17 +156,17 @@ html, body {
 }
 
 #overlay-title {
-  font-size: clamp(24px, 6vw, 34px);
+  font-size: clamp(22px, 6vw, 32px);
   font-weight: 900;
   color: #222;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   text-shadow: 0 1px 0 rgba(255,255,255,0.8);
 }
 
 #overlay-message {
-  font-size: clamp(14px, 4vw, 17px);
+  font-size: clamp(13px, 4vw, 16px);
   color: #555;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   line-height: 1.7;
 }
 
@@ -184,11 +183,6 @@ html, body {
   transition: transform 0.1s ease, box-shadow 0.1s ease;
   letter-spacing: 1px;
   -webkit-tap-highlight-color: transparent;
-}
-
-#overlay-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(255, 107, 53, 0.55);
 }
 
 #overlay-btn:active {
