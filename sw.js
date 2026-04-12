@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'unkoyoke-v1';
+const CACHE = 'unkoyoke-v2';
 
 const ASSETS = [
   '/',
@@ -8,8 +8,9 @@ const ASSETS = [
   '/style.css',
   '/game.js',
   '/manifest.json',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
+  '/icons/apple-touch-icon.png',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
 ];
 
 // ---- Install: pre-cache all assets ----
