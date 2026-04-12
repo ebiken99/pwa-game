@@ -42,6 +42,9 @@ const PLAYER_SPEED    = 330;  // px/s
 const GROUND_H        = 28;   // grass height
 const GOLDEN_SIZE     = POOP_SIZE * 3;   // 3x normal poop (126px)
 const GOLDEN_INTERVAL = 2500;            // ms between golden poop spawns
+const STILL_THRESHOLD = 12;              // px: movement smaller than this = "still"
+const STILL_DELAY_MS  = 2000;            // ms of stillness before aimed poop fires
+const AIMED_INTERVAL_MS = 2500;          // ms between successive aimed poops
 
 // ============================================================
 // Game State
@@ -56,7 +59,10 @@ let poops         = [];
 let animId            = null;
 let gameOverFlash     = 0;
 let lastGoldenSpawnTs = 0;
-let cheatFlash        = 0;   // gold flash on cheat activation
+let cheatFlash        = 0;
+let playerStillX      = null; // x when player last started being still
+let playerStillMs     = 0;    // accumulated ms of stillness
+let lastAimedTs       = 0;    // performance.now() of last aimed spawn
 
 // ── Cheat code: 5 taps in top-right corner within 5s ──
 let cheatTapCount = 0;
@@ -244,6 +250,8 @@ function triggerStart() {
     lastTs            = now;
     lastSpawnTs       = now;
     lastGoldenSpawnTs = now;
+    playerStillX      = null;
+    playerStillMs     = 0;
   }
 }
 
@@ -259,6 +267,9 @@ function initGame() {
   poops             = [];
   gameOverFlash     = 0;
   lastGoldenSpawnTs = 0;
+  playerStillX      = null;
+  playerStillMs     = 0;
+  lastAimedTs       = 0;
   player.x          = canvas.width  / 2;
   player.y          = canvas.height - GROUND_H - 4;
   updateHUD();
@@ -276,6 +287,14 @@ function spawnPoop(now, golden = false) {
   poops.push({ x, y: -size, speed: cfg.speed, size, golden: isGolden });
   if (golden) lastGoldenSpawnTs = now;
   else        lastSpawnTs       = now;
+}
+
+function spawnAimedPoop(now) {
+  const isGolden = currentLevel === FINAL_LEVEL;
+  const size     = isGolden ? GOLDEN_SIZE : POOP_SIZE;
+  const cfg      = LEVEL_CONFIG[currentLevel - 1];
+  poops.push({ x: player.x, y: -size, speed: cfg.speed * 1.3, size, golden: isGolden, aimed: true });
+  lastAimedTs = now;
 }
 
 // ============================================================
@@ -312,6 +331,23 @@ function update(now) {
 
   // --- Level timer ---
   levelTimer += dt;
+
+  // --- Aimed poop: level 5+ fires at player when they stay still ---
+  if (currentLevel >= 5) {
+    if (playerStillX === null) {
+      playerStillX  = player.x;
+      playerStillMs = 0;
+    } else if (Math.abs(player.x - playerStillX) > STILL_THRESHOLD) {
+      // player moved – reset
+      playerStillX  = player.x;
+      playerStillMs = 0;
+    } else {
+      playerStillMs += dt * 1000;
+      if (playerStillMs >= STILL_DELAY_MS && now - lastAimedTs >= AIMED_INTERVAL_MS) {
+        spawnAimedPoop(now);
+      }
+    }
+  }
 
   // --- Spawn: normal poop ---
   const cfg = LEVEL_CONFIG[currentLevel - 1];
@@ -547,6 +583,32 @@ function drawGoldenWarning() {
   ctx.restore();
 }
 
+function drawAimedWarning() {
+  if (state !== STATE.PLAYING || currentLevel < 5) return;
+  if (!playerStillX || playerStillMs < 400) return;
+
+  const progress = Math.min(playerStillMs / STILL_DELAY_MS, 1);
+  const groundY  = canvas.height - GROUND_H + 4;
+  const rx       = 18 + progress * 22;
+  const alpha    = 0.35 + progress * 0.5;
+
+  ctx.save();
+  ctx.strokeStyle = `rgba(255, 60, 60, ${alpha})`;
+  ctx.lineWidth   = 2.5;
+  // Elliptical shadow on ground
+  ctx.beginPath();
+  ctx.ellipse(playerStillX, groundY, rx, rx * 0.28, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Cross
+  ctx.beginPath();
+  ctx.moveTo(playerStillX - rx, groundY);
+  ctx.lineTo(playerStillX + rx, groundY);
+  ctx.moveTo(playerStillX, groundY - rx * 0.28 - 6);
+  ctx.lineTo(playerStillX, groundY + rx * 0.28 + 6);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawCheatFlash() {
   if (cheatFlash <= 0) return;
   ctx.fillStyle = `rgba(255, 215, 0, ${cheatFlash * 0.6})`;
@@ -570,6 +632,7 @@ function gameLoop(now) {
   update(now);
 
   drawBackground();
+  drawAimedWarning();
   drawPoops();
   drawGoldenWarning();
   drawPlayer();
