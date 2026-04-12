@@ -1,17 +1,18 @@
 'use strict';
 
-const CACHE = 'unkoyoke-v3';
+const CACHE = 'unkoyoke-v4';
 
-// Use relative paths so this works on any subpath (e.g. GitHub Pages /pwa-game/)
+// Absolute paths matching the GitHub Pages deployment at /pwa-game/
+const BASE = '/pwa-game';
 const ASSETS = [
-  './',
-  './index.html',
-  './style.css',
-  './game.js',
-  './manifest.json',
-  './icons/apple-touch-icon.png',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/style.css',
+  BASE + '/game.js',
+  BASE + '/manifest.json',
+  BASE + '/icons/apple-touch-icon.png',
+  BASE + '/icons/icon-192.png',
+  BASE + '/icons/icon-512.png',
 ];
 
 // ---- Install: pre-cache all assets ----
