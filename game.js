@@ -25,11 +25,11 @@ const LEVEL_DURATION = 30; // seconds per level
  * count        : how many poops can spawn simultaneously in a wave
  */
 const LEVEL_CONFIG = [
-  { speed: 130, spawnInterval: 2400, label: 'レベル 1', emoji: '🌱' },
-  { speed: 210, spawnInterval: 1900, label: 'レベル 2', emoji: '🌿' },
-  { speed: 300, spawnInterval: 1500, label: 'レベル 3', emoji: '🍀' },
-  { speed: 400, spawnInterval: 1150, label: 'レベル 4', emoji: '🔥' },
-  { speed: 510, spawnInterval:  850, label: 'レベル 5', emoji: '💀' },
+  { speed: 260, spawnInterval: 2400, label: 'レベル 1', emoji: '🌱' },
+  { speed: 420, spawnInterval: 1900, label: 'レベル 2', emoji: '🌿' },
+  { speed: 600, spawnInterval: 1500, label: 'レベル 3', emoji: '🍀' },
+  { speed: 800, spawnInterval: 1150, label: 'レベル 4', emoji: '🔥' },
+  { speed: 1020, spawnInterval:  850, label: 'レベル 5', emoji: '💀' },
 ];
 
 const PLAYER_EMOJI    = '🏃';
