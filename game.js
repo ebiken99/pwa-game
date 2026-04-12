@@ -17,7 +17,7 @@ const STATE = {
   WIN:      'win',
 };
 
-const LEVEL_DURATION = 30; // seconds per level
+const LEVEL_DURATION = 20; // seconds per level
 
 /**
  * speed        : poop fall speed (px/s)
@@ -38,6 +38,8 @@ const PLAYER_SIZE     = 54;   // font-size used for drawing
 const POOP_SIZE       = 42;
 const PLAYER_SPEED    = 330;  // px/s
 const GROUND_H        = 28;   // grass height
+const GOLDEN_SIZE     = POOP_SIZE * 3;   // 3x normal poop (126px)
+const GOLDEN_INTERVAL = 2500;            // ms between golden poop spawns
 
 // ============================================================
 // Game State
@@ -49,8 +51,9 @@ let levelTimer    = 0;   // seconds elapsed in current level
 let lastTs        = 0;
 let lastSpawnTs   = 0;
 let poops         = [];
-let animId        = null;
-let gameOverFlash = 0;   // countdown for red flash on game over
+let animId           = null;
+let gameOverFlash    = 0;   // countdown for red flash on game over
+let lastGoldenSpawnTs = 0;
 
 // ============================================================
 // Player
@@ -173,14 +176,16 @@ function triggerStart() {
     state = STATE.PLAYING;
     hideOverlay();
     const now = performance.now();
-    lastTs      = now;
-    lastSpawnTs = now;
+    lastTs            = now;
+    lastSpawnTs       = now;
+    lastGoldenSpawnTs = now;
   } else if (state === STATE.LEVELUP) {
     state = STATE.PLAYING;
     hideOverlay();
     const now = performance.now();
-    lastTs      = now;
-    lastSpawnTs = now;
+    lastTs            = now;
+    lastSpawnTs       = now;
+    lastGoldenSpawnTs = now;
   }
 }
 
@@ -190,33 +195,35 @@ overlayBtn.addEventListener('click', triggerStart);
 // Game init
 // ============================================================
 function initGame() {
-  currentLevel  = 1;
-  score         = 0;
-  levelTimer    = 0;
-  poops         = [];
-  gameOverFlash = 0;
-  player.x      = canvas.width  / 2;
-  player.y      = canvas.height - GROUND_H - 4;
+  currentLevel      = 1;
+  score             = 0;
+  levelTimer        = 0;
+  poops             = [];
+  gameOverFlash     = 0;
+  lastGoldenSpawnTs = 0;
+  player.x          = canvas.width  / 2;
+  player.y          = canvas.height - GROUND_H - 4;
   updateHUD();
 }
 
 // ============================================================
 // Spawn poop
 // ============================================================
-function spawnPoop(now) {
-  const margin = POOP_SIZE;
-  const x = margin + Math.random() * (canvas.width - margin * 2);
-  const cfg = LEVEL_CONFIG[currentLevel - 1];
-  poops.push({ x, y: -POOP_SIZE, speed: cfg.speed });
-  lastSpawnTs = now;
+function spawnPoop(now, golden = false) {
+  const size   = golden ? GOLDEN_SIZE : POOP_SIZE;
+  const margin = size * 0.6;
+  const x      = margin + Math.random() * (canvas.width - margin * 2);
+  const cfg    = LEVEL_CONFIG[currentLevel - 1];
+  poops.push({ x, y: -size, speed: cfg.speed, size, golden });
+  if (golden) lastGoldenSpawnTs = now;
+  else        lastSpawnTs       = now;
 }
 
 // ============================================================
 // Collision detection
 // ============================================================
 function hitTest(poop) {
-  const halfPoop = POOP_SIZE * 0.42;
-  // AABB
+  const halfPoop = poop.size * 0.42;
   return (
     player.x - player.hitW / 2 < poop.x + halfPoop &&
     player.x + player.hitW / 2 > poop.x - halfPoop &&
@@ -247,10 +254,17 @@ function update(now) {
   // --- Level timer ---
   levelTimer += dt;
 
-  // --- Spawn ---
+  // --- Spawn: normal poop ---
   const cfg = LEVEL_CONFIG[currentLevel - 1];
   if (now - lastSpawnTs >= cfg.spawnInterval) {
     spawnPoop(now);
+  }
+
+  // --- Spawn: golden poop (level 5, last 5 seconds) ---
+  if (currentLevel === 5 && levelTimer >= LEVEL_DURATION - 5) {
+    if (now - lastGoldenSpawnTs >= GOLDEN_INTERVAL) {
+      spawnPoop(now, true);
+    }
   }
 
   // --- Clouds ---
@@ -378,11 +392,30 @@ function drawPlayer() {
 }
 
 function drawPoops() {
-  ctx.font         = `${POOP_SIZE}px serif`;
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
   for (const p of poops) {
+    ctx.save();
+    if (p.golden) {
+      // Pulsing gold glow background
+      const pulse = 0.5 + 0.5 * Math.sin(levelTimer * 8);
+      ctx.fillStyle = `rgba(255, 215, 0, ${0.25 + pulse * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.52, 0, Math.PI * 2);
+      ctx.fill();
+      // Gold ring
+      ctx.strokeStyle = `rgba(255, 200, 0, ${0.6 + pulse * 0.4})`;
+      ctx.lineWidth   = 5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      // Glow on the emoji itself
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur  = 28;
+    }
+    ctx.font = `${p.size}px serif`;
     ctx.fillText(POOP_EMOJI, p.x, p.y);
+    ctx.restore();
   }
 }
 
@@ -427,6 +460,28 @@ function drawGameOverFlash() {
   gameOverFlash -= 0.04;
 }
 
+function drawGoldenWarning() {
+  if (state !== STATE.PLAYING) return;
+  if (currentLevel !== 5 || levelTimer < LEVEL_DURATION - 5) return;
+
+  // Subtle gold tint over the whole screen
+  const pulse = 0.5 + 0.5 * Math.sin(levelTimer * 6);
+  ctx.fillStyle = `rgba(255, 200, 0, ${0.06 + pulse * 0.06})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Warning banner
+  const bannerY = canvas.height * 0.18;
+  ctx.save();
+  ctx.font         = `bold ${Math.round(canvas.width * 0.048)}px Arial, sans-serif`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = `rgba(255, 210, 0, ${0.8 + pulse * 0.2})`;
+  ctx.shadowColor  = '#FFD700';
+  ctx.shadowBlur   = 16;
+  ctx.fillText('👑 ゴールデンうんこ出現！ 👑', canvas.width / 2, bannerY);
+  ctx.restore();
+}
+
 // ============================================================
 // Game Loop
 // ============================================================
@@ -435,6 +490,7 @@ function gameLoop(now) {
 
   drawBackground();
   drawPoops();
+  drawGoldenWarning();
   drawPlayer();
   drawLevelProgress();
   drawGameOverFlash();
