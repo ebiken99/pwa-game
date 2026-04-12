@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="うんこよけ">
+  <meta name="theme-color" content="#87CEEB">
+  <title>💩 うんこよけゲーム</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+      <span class="hud-item" id="level-display">レベル 1</span>
+      <span class="hud-item" id="score-display">よけた: 0 個</span>
+    </div>
+
+    <!-- Touch Controls -->
+    <div id="controls">
+      <button class="ctrl-btn" id="left-btn" aria-label="左に移動">◀</button>
+      <button class="ctrl-btn" id="right-btn" aria-label="右に移動">▶</button>
+    </div>
+
+    <!-- Overlay (Start / Level Up / Game Over / Win) -->
+    <div id="overlay">
+      <div id="overlay-content">
+        <div id="overlay-emoji">💩</div>
+        <h1 id="overlay-title">うんこよけゲーム</h1>
+        <p id="overlay-message">上から落ちてくるうんこをよけろ！<br>← → キー または 画面ボタンで操作<br>全5レベル・速度が上がるぞ！</p>
+        <button id="overlay-btn">スタート</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

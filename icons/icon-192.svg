@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Background -->
+  <rect width="192" height="192" fill="#87CEEB" rx="32"/>
+  <!-- Sky to grass gradient hint -->
+  <rect x="0" y="148" width="192" height="44" fill="#5AB85C" rx="0"/>
+  <rect x="0" y="180" width="192" height="12" fill="#7D5124" rx="0"/>
+  <!-- Poop emoji (drawn as SVG shapes) -->
+  <!-- Base mound -->
+  <ellipse cx="96" cy="128" rx="46" ry="22" fill="#6B3A2A"/>
+  <!-- Middle bump -->
+  <ellipse cx="96" cy="108" rx="34" ry="20" fill="#7B4132"/>
+  <!-- Top curl -->
+  <ellipse cx="96" cy="90" rx="22" ry="18" fill="#8B4A38"/>
+  <!-- Tip -->
+  <ellipse cx="96" cy="76" rx="12" ry="12" fill="#8B4A38"/>
+  <!-- Swirl highlight -->
+  <path d="M96 72 Q105 68 102 78 Q99 85 96 80" stroke="#A05A44" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <!-- Eyes -->
+  <circle cx="88" cy="103" r="4" fill="white"/>
+  <circle cx="104" cy="103" r="4" fill="white"/>
+  <circle cx="89.5" cy="104" r="2.2" fill="#222"/>
+  <circle cx="105.5" cy="104" r="2.2" fill="#222"/>
+  <!-- Smile -->
+  <path d="M88 112 Q96 120 104 112" stroke="#222" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <!-- Stars/sparkles -->
+  <text x="24" y="56" font-size="22" font-family="serif">✨</text>
+  <text x="140" y="48" font-size="18" font-family="serif">⭐</text>
+</svg>
