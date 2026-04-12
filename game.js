@@ -293,7 +293,7 @@ function spawnAimedPoop(now) {
   const isGolden = currentLevel === FINAL_LEVEL;
   const size     = isGolden ? GOLDEN_SIZE : POOP_SIZE;
   const cfg      = LEVEL_CONFIG[currentLevel - 1];
-  poops.push({ x: player.x, y: -size, speed: cfg.speed * 0.7, size, golden: isGolden, aimed: true });
+  poops.push({ x: player.x, y: -size, speed: cfg.speed * 0.5, size, golden: isGolden, aimed: true });
   lastAimedTs = now;
 }
 
