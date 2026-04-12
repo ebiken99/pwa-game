@@ -25,12 +25,14 @@ const LEVEL_DURATION = 20; // seconds per level
  * count        : how many poops can spawn simultaneously in a wave
  */
 const LEVEL_CONFIG = [
-  { speed: 260, spawnInterval: 2400, label: 'レベル 1', emoji: '🌱' },
-  { speed: 420, spawnInterval: 1900, label: 'レベル 2', emoji: '🌿' },
-  { speed: 600, spawnInterval: 1500, label: 'レベル 3', emoji: '🍀' },
-  { speed: 800, spawnInterval: 1150, label: 'レベル 4', emoji: '🔥' },
-  { speed: 1020, spawnInterval:  850, label: 'レベル 5', emoji: '💀' },
+  { speed: 260,  spawnInterval: 2400, label: 'レベル 1',     emoji: '🌱' },
+  { speed: 420,  spawnInterval: 1900, label: 'レベル 2',     emoji: '🌿' },
+  { speed: 600,  spawnInterval: 1500, label: 'レベル 3',     emoji: '🍀' },
+  { speed: 800,  spawnInterval: 1150, label: 'レベル 4',     emoji: '🔥' },
+  { speed: 1020, spawnInterval:  850, label: 'レベル 5',     emoji: '💀' },
+  { speed: 1200, spawnInterval:  700, label: '👑 FINAL',     emoji: '👑' },
 ];
+const FINAL_LEVEL = LEVEL_CONFIG.length; // 6
 
 const PLAYER_EMOJI    = '🏃';
 const POOP_EMOJI      = '💩';
@@ -51,9 +53,16 @@ let levelTimer    = 0;   // seconds elapsed in current level
 let lastTs        = 0;
 let lastSpawnTs   = 0;
 let poops         = [];
-let animId           = null;
-let gameOverFlash    = 0;   // countdown for red flash on game over
+let animId            = null;
+let gameOverFlash     = 0;
 let lastGoldenSpawnTs = 0;
+let cheatFlash        = 0;   // gold flash on cheat activation
+
+// ── Cheat code: 5 taps in top-right corner within 5s ──
+let cheatTapCount = 0;
+let cheatFirstTs  = 0;
+const CHEAT_TAPS    = 5;
+const CHEAT_WINDOW  = 5000; // ms
 
 // ============================================================
 // Player
@@ -119,8 +128,44 @@ function updateKeysFromTouches(touches) {
   }
 }
 
+// ── Cheat: 5 taps top-right corner within 5s → FINAL STAGE ──
+function checkCheatTap(clientX, clientY) {
+  const inCorner = clientX > window.innerWidth * 0.75 && clientY < window.innerHeight * 0.18;
+  if (!inCorner) return;
+  const now = Date.now();
+  if (cheatTapCount === 0 || now - cheatFirstTs > CHEAT_WINDOW) {
+    cheatTapCount = 1;
+    cheatFirstTs  = now;
+  } else {
+    cheatTapCount++;
+    if (cheatTapCount >= CHEAT_TAPS) {
+      cheatTapCount = 0;
+      activateCheat();
+    }
+  }
+}
+
+function activateCheat() {
+  initGame();
+  currentLevel = FINAL_LEVEL;
+  updateHUD();
+  state      = STATE.PLAYING;
+  cheatFlash = 1.0;
+  hideOverlay();
+  const now = performance.now();
+  lastTs            = now;
+  lastSpawnTs       = now;
+  lastGoldenSpawnTs = now;
+}
+
 const gameContainer = document.getElementById('game-container');
-gameContainer.addEventListener('touchstart',  (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchstart', (e) => {
+  // Cheat check runs regardless of state
+  for (const t of e.changedTouches) checkCheatTap(t.clientX, t.clientY);
+  if (state !== STATE.PLAYING) return;
+  e.preventDefault();
+  updateKeysFromTouches(e.touches);
+}, { passive: false });
 gameContainer.addEventListener('touchmove',   (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
 gameContainer.addEventListener('touchend',    (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
 gameContainer.addEventListener('touchcancel', (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
@@ -223,11 +268,12 @@ function initGame() {
 // Spawn poop
 // ============================================================
 function spawnPoop(now, golden = false) {
-  const size   = golden ? GOLDEN_SIZE : POOP_SIZE;
-  const margin = size * 0.6;
-  const x      = margin + Math.random() * (canvas.width - margin * 2);
-  const cfg    = LEVEL_CONFIG[currentLevel - 1];
-  poops.push({ x, y: -size, speed: cfg.speed, size, golden });
+  const isGolden = golden || currentLevel === FINAL_LEVEL; // level 6: all golden
+  const size     = isGolden ? GOLDEN_SIZE : POOP_SIZE;
+  const margin   = size * 0.6;
+  const x        = margin + Math.random() * (canvas.width - margin * 2);
+  const cfg      = LEVEL_CONFIG[currentLevel - 1];
+  poops.push({ x, y: -size, speed: cfg.speed, size, golden: isGolden });
   if (golden) lastGoldenSpawnTs = now;
   else        lastSpawnTs       = now;
 }
@@ -317,12 +363,12 @@ function update(now) {
 
   // --- Level up check ---
   if (levelTimer >= LEVEL_DURATION) {
-    if (currentLevel >= LEVEL_CONFIG.length) {
+    if (currentLevel >= FINAL_LEVEL) {
       state = STATE.WIN;
       showOverlay(
-        '🎉',
-        'ゲームクリア！',
-        `全レベル制覇！おめでとう！<br>よけた数: <strong>${score} 個</strong>`,
+        '🏆',
+        '真のクリア！',
+        `ゴールデンうんこを全て回避！<br>伝説の勇者よ！<br>よけた数: <strong>${score} 個</strong>`,
         'もう一度'
       );
     } else {
@@ -332,10 +378,11 @@ function update(now) {
       state = STATE.LEVELUP;
       updateHUD();
       const nextCfg = LEVEL_CONFIG[currentLevel - 1];
+      const isFinal = currentLevel === FINAL_LEVEL;
       showOverlay(
         nextCfg.emoji,
-        `${nextCfg.label} スタート！`,
-        `うんこが速くなった！<br>気をつけろ！`,
+        isFinal ? '👑 FINAL STAGE 👑' : `${nextCfg.label} スタート！`,
+        isFinal ? '全てのうんこがゴールデン！<br>最後の試練を乗り越えろ！' : 'うんこが速くなった！<br>気をつけろ！',
         '続ける'
       );
     }
@@ -477,14 +524,14 @@ function drawGameOverFlash() {
 
 function drawGoldenWarning() {
   if (state !== STATE.PLAYING) return;
-  if (currentLevel !== 5 || levelTimer < LEVEL_DURATION - 5) return;
+  const isFinal      = currentLevel === FINAL_LEVEL;
+  const isLevel5rush = currentLevel === 5 && levelTimer >= LEVEL_DURATION - 5;
+  if (!isFinal && !isLevel5rush) return;
 
-  // Subtle gold tint over the whole screen
   const pulse = 0.5 + 0.5 * Math.sin(levelTimer * 6);
-  ctx.fillStyle = `rgba(255, 200, 0, ${0.06 + pulse * 0.06})`;
+  ctx.fillStyle = `rgba(255, 200, 0, ${isFinal ? 0.08 + pulse * 0.07 : 0.06 + pulse * 0.06})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Warning banner
   const bannerY = canvas.height * 0.18;
   ctx.save();
   ctx.font         = `bold ${Math.round(canvas.width * 0.048)}px Arial, sans-serif`;
@@ -493,8 +540,27 @@ function drawGoldenWarning() {
   ctx.fillStyle    = `rgba(255, 210, 0, ${0.8 + pulse * 0.2})`;
   ctx.shadowColor  = '#FFD700';
   ctx.shadowBlur   = 16;
-  ctx.fillText('👑 ゴールデンうんこ出現！ 👑', canvas.width / 2, bannerY);
+  ctx.fillText(
+    isFinal ? '👑 FINAL STAGE 👑' : '👑 ゴールデンうんこ出現！ 👑',
+    canvas.width / 2, bannerY
+  );
   ctx.restore();
+}
+
+function drawCheatFlash() {
+  if (cheatFlash <= 0) return;
+  ctx.fillStyle = `rgba(255, 215, 0, ${cheatFlash * 0.6})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.font         = `bold ${Math.round(canvas.width * 0.07)}px Arial, sans-serif`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = `rgba(255, 255, 255, ${cheatFlash})`;
+  ctx.shadowColor  = '#FFD700';
+  ctx.shadowBlur   = 20;
+  ctx.fillText('👑 FINAL STAGE 解放！ 👑', canvas.width / 2, canvas.height / 2);
+  ctx.restore();
+  cheatFlash -= 0.025;
 }
 
 // ============================================================
@@ -509,6 +575,7 @@ function gameLoop(now) {
   drawPlayer();
   drawLevelProgress();
   drawGameOverFlash();
+  drawCheatFlash();
 
   animId = requestAnimationFrame(gameLoop);
 }
