@@ -120,10 +120,10 @@ function updateKeysFromTouches(touches) {
 }
 
 const gameContainer = document.getElementById('game-container');
-gameContainer.addEventListener('touchstart',  (e) => { e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
-gameContainer.addEventListener('touchmove',   (e) => { e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
-gameContainer.addEventListener('touchend',    (e) => { e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
-gameContainer.addEventListener('touchcancel', (e) => { e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchstart',  (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchmove',   (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchend',    (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchcancel', (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
 
 // Mouse fallback for desktop
 gameContainer.addEventListener('mousedown', (e) => {
