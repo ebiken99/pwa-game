@@ -104,23 +104,36 @@ document.addEventListener('keyup', (e) => {
   if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
 });
 
-// Touch / Mouse controls
-const leftBtn  = document.getElementById('left-btn');
-const rightBtn = document.getElementById('right-btn');
-
-function bindBtn(btn, key) {
-  const press   = (e) => { e.preventDefault(); keys[key] = true;  btn.classList.add('pressed'); };
-  const release = (e) => { e.preventDefault(); keys[key] = false; btn.classList.remove('pressed'); };
-  btn.addEventListener('touchstart',  press,   { passive: false });
-  btn.addEventListener('touchend',    release, { passive: false });
-  btn.addEventListener('touchcancel', release, { passive: false });
-  btn.addEventListener('mousedown',   press);
-  btn.addEventListener('mouseup',     release);
-  btn.addEventListener('mouseleave',  release);
+// ── Touch zone: bottom half of screen ──────────────────
+// Left side  → move left
+// Right side → move right
+function updateKeysFromTouches(touches) {
+  if (state !== STATE.PLAYING) return;
+  keys.left  = false;
+  keys.right = false;
+  for (const t of touches) {
+    if (t.clientY > window.innerHeight / 2) {
+      if (t.clientX < window.innerWidth / 2) keys.left  = true;
+      else                                    keys.right = true;
+    }
+  }
 }
 
-bindBtn(leftBtn,  'left');
-bindBtn(rightBtn, 'right');
+const gameContainer = document.getElementById('game-container');
+gameContainer.addEventListener('touchstart',  (e) => { e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchmove',   (e) => { e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchend',    (e) => { e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchcancel', (e) => { e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+
+// Mouse fallback for desktop
+gameContainer.addEventListener('mousedown', (e) => {
+  if (state !== STATE.PLAYING) return;
+  if (e.clientY > window.innerHeight / 2) {
+    keys.left  = e.clientX < window.innerWidth / 2;
+    keys.right = e.clientX >= window.innerWidth / 2;
+  }
+});
+gameContainer.addEventListener('mouseup', () => { keys.left = false; keys.right = false; });
 
 // ============================================================
 // Canvas resize
@@ -454,6 +467,33 @@ function drawLevelProgress() {
   ctx.fillText(`残り ${remaining}秒`, canvas.width - 12, barY - 9);
 }
 
+function drawTouchHint() {
+  if (state !== STATE.PLAYING) return;
+  const midX  = canvas.width  / 2;
+  const zoneY = canvas.height / 2;
+  const zoneH = canvas.height - zoneY;
+  const centerY = zoneY + zoneH / 2;
+  const arrowSize = Math.round(canvas.width * 0.07);
+
+  ctx.save();
+  ctx.font         = `bold ${arrowSize}px Arial, sans-serif`;
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = 'rgba(255, 255, 255, 0.18)';
+  ctx.textAlign    = 'left';
+  ctx.fillText('◀', 18, centerY);
+  ctx.textAlign    = 'right';
+  ctx.fillText('▶', canvas.width - 18, centerY);
+  // subtle divider
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth   = 1;
+  ctx.setLineDash([6, 8]);
+  ctx.beginPath();
+  ctx.moveTo(midX, zoneY);
+  ctx.lineTo(midX, canvas.height - GROUND_H);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawGameOverFlash() {
   if (gameOverFlash <= 0) return;
   ctx.fillStyle = `rgba(220, 30, 30, ${gameOverFlash * 0.5})`;
@@ -490,6 +530,7 @@ function gameLoop(now) {
   update(now);
 
   drawBackground();
+  drawTouchHint();
   drawPoops();
   drawGoldenWarning();
   drawPlayer();
