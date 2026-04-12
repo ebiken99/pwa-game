@@ -467,32 +467,6 @@ function drawLevelProgress() {
   ctx.fillText(`残り ${remaining}秒`, canvas.width - 12, barY - 9);
 }
 
-function drawTouchHint() {
-  if (state !== STATE.PLAYING) return;
-  const midX  = canvas.width  / 2;
-  const zoneY = canvas.height / 2;
-  const zoneH = canvas.height - zoneY;
-  const centerY = zoneY + zoneH / 2;
-  const arrowSize = Math.round(canvas.width * 0.07);
-
-  ctx.save();
-  ctx.font         = `bold ${arrowSize}px Arial, sans-serif`;
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle    = 'rgba(255, 255, 255, 0.18)';
-  ctx.textAlign    = 'left';
-  ctx.fillText('◀', 18, centerY);
-  ctx.textAlign    = 'right';
-  ctx.fillText('▶', canvas.width - 18, centerY);
-  // subtle divider
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-  ctx.lineWidth   = 1;
-  ctx.setLineDash([6, 8]);
-  ctx.beginPath();
-  ctx.moveTo(midX, zoneY);
-  ctx.lineTo(midX, canvas.height - GROUND_H);
-  ctx.stroke();
-  ctx.restore();
-}
 
 function drawGameOverFlash() {
   if (gameOverFlash <= 0) return;
@@ -530,7 +504,6 @@ function gameLoop(now) {
   update(now);
 
   drawBackground();
-  drawTouchHint();
   drawPoops();
   drawGoldenWarning();
   drawPlayer();
