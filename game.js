@@ -17,7 +17,7 @@ const STATE = {
   WIN:      'win',
 };
 
-const LEVEL_DURATION = 20; // seconds per level
+const LEVEL_DURATION = 15; // seconds per level
 
 /**
  * speed        : poop fall speed (px/s)
