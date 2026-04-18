@@ -32,12 +32,14 @@ const LEVEL_CONFIG = [
   { speed: 510, spawnInterval:  850, label: 'レベル 5', emoji: '💀' },
 ];
 
-const PLAYER_EMOJI    = '🏃';
 const POOP_EMOJI      = '💩';
-const PLAYER_SIZE     = 54;   // font-size used for drawing
+const PLAYER_SIZE     = 54;   // draw size for player image
 const POOP_SIZE       = 42;
 const PLAYER_SPEED    = 330;  // px/s
 const GROUND_H        = 28;   // grass height
+
+const playerImg = new Image();
+playerImg.src = 'IMG_8981.gif';
 
 // ============================================================
 // Game State
@@ -360,16 +362,14 @@ function drawBackground() {
 }
 
 function drawPlayer() {
+  if (!playerImg.complete) return;
   ctx.save();
-  ctx.font = `${PLAYER_SIZE}px serif`;
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'bottom';
   if (player.facing === -1) {
     ctx.translate(player.x, player.y);
     ctx.scale(-1, 1);
-    ctx.fillText(PLAYER_EMOJI, 0, 0);
+    ctx.drawImage(playerImg, -PLAYER_SIZE / 2, -PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
   } else {
-    ctx.fillText(PLAYER_EMOJI, player.x, player.y);
+    ctx.drawImage(playerImg, player.x - PLAYER_SIZE / 2, player.y - PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
   }
   ctx.restore();
 }

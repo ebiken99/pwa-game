@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'unkoyoke-v1';
+const CACHE = 'unkoyoke-v2';
 
 const ASSETS = [
   '/',
@@ -10,6 +10,7 @@ const ASSETS = [
   '/manifest.json',
   '/icons/icon-192.svg',
   '/icons/icon-512.svg',
+  '/IMG_8981.gif',
 ];
 
 // ---- Install: pre-cache all assets ----
