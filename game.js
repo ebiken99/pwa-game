@@ -47,7 +47,12 @@ const AIMED_INTERVAL_MS = 2500;          // ms between successive aimed poops
 
 const playerImg = new Image();
 let playerImgReady = false;
-playerImg.onload  = () => { playerImgReady = true; };
+playerImg.onload  = () => {
+  playerImgReady = true;
+  // Keep in DOM (hidden) so browsers continue animating the GIF
+  playerImg.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;width:1px;height:1px;';
+  document.body.appendChild(playerImg);
+};
 playerImg.onerror = () => { playerImgReady = false; };
 playerImg.src = 'IMG_8981.gif';
 
