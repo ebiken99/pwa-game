@@ -36,10 +36,10 @@ const FINAL_LEVEL = LEVEL_CONFIG.length; // 6
 
 const PLAYER_SPEED    = 330;  // px/s
 const GROUND_H        = 28;   // grass height
-const GOLDEN_SIZE     = POOP_SIZE * 3;   // 3x normal poop (126px)
-const GOLDEN_INTERVAL = 2500;            // ms between golden poop spawns
 const POOP_EMOJI      = '💩';
 const POOP_SIZE       = 42;
+const GOLDEN_SIZE     = POOP_SIZE * 3;   // 3x normal poop (126px)
+const GOLDEN_INTERVAL = 2500;            // ms between golden poop spawns
 const STILL_THRESHOLD = 12;              // px: movement smaller than this = "still"
 const STILL_DELAY_MS  = 2000;            // ms of stillness before aimed poop fires
 const AIMED_INTERVAL_MS = 2500;          // ms between successive aimed poops
