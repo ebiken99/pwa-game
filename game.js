@@ -662,10 +662,10 @@ function drawLevelProgress() {
 function drawVersion() {
   ctx.save();
   ctx.font         = '11px monospace';
-  ctx.textAlign    = 'left';
+  ctx.textAlign    = 'center';
   ctx.textBaseline = 'top';
   ctx.fillStyle    = 'rgba(255,255,255,0.45)';
-  ctx.fillText(VERSION, 8, 8);
+  ctx.fillText(VERSION, canvas.width / 2, 8);
   ctx.restore();
 }
 
