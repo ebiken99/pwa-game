@@ -51,6 +51,25 @@ playerImg.onload  = () => { playerImgReady = true; };
 playerImg.onerror = () => { playerImgReady = false; };
 playerImg.src = 'IMG_8981.gif';
 
+// ============================================================
+// Game State
+// ============================================================
+let state         = STATE.START;
+let currentLevel  = 1;
+let score         = 0;
+let levelTimer    = 0;
+let lastTs        = 0;
+let lastSpawnTs   = 0;
+let poops         = [];
+let animId            = null;
+let gameOverFlash     = 0;
+let lastGoldenSpawnTs = 0;
+let cheatFlash        = 0;
+let playerStillX      = null;
+let playerStillMs     = 0;
+let lastAimedTs       = 0;
+let playerAnimTime    = 0;
+
 // ── Cheat code: 5 taps in top-right corner within 5s ──
 let cheatTapCount = 0;
 let cheatFirstTs  = 0;
