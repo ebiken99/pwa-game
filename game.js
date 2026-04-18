@@ -45,32 +45,11 @@ const STILL_THRESHOLD = 12;              // px: movement smaller than this = "st
 const STILL_DELAY_MS  = 2000;            // ms of stillness before aimed poop fires
 const AIMED_INTERVAL_MS = 2500;          // ms between successive aimed poops
 
-// ============================================================
-// Game State
-// ============================================================
-let state         = STATE.START;
-let currentLevel  = 1;
-let score         = 0;
-let levelTimer    = 0;   // seconds elapsed in current level
-let lastTs        = 0;
-let lastSpawnTs   = 0;
-let poops         = [];
-let animId            = null;
-let gameOverFlash     = 0;
-let lastGoldenSpawnTs = 0;
-let cheatFlash        = 0;
-let playerStillX      = null;
-let playerStillMs     = 0;
-let lastAimedTs       = 0;
-let playerAnimTime    = 0;    // advances while moving, drives run animation
-
-// ── Player image (GIF from external URL, canvas fallback if 403) ──
-const PLAYER_IMG_URL = 'https://illust55.com/storage/2021/05/%E5%85%A8%E5%8A%9B%E3%81%A7%E8%B5%B0%E3%82%8B%E9%80%9A%E5%8B%A4%E3%81%AE%E3%82%B5%E3%83%A9%E3%83%AA%E3%83%BC%E3%83%9E%E3%83%B3%EF%BC%86%E9%81%85%E5%88%BB%E5%AF%8B%E5%89%8D%E3%83%80%E3%83%83%E3%82%B7%E3%83%A5%E3%81%AE%E7%A4%BE%E4%BC%9A%E4%BA%BA%EF%BC%9AGIF%E3%82%A2%E3%83%8B%E3%83%A1.gif';
 const playerImg = new Image();
 let playerImgReady = false;
 playerImg.onload  = () => { playerImgReady = true; };
 playerImg.onerror = () => { playerImgReady = false; };
-playerImg.src = PLAYER_IMG_URL;
+playerImg.src = 'IMG_8981.gif';
 
 // ── Cheat code: 5 taps in top-right corner within 5s ──
 let cheatTapCount = 0;
@@ -485,6 +464,7 @@ function drawBackground() {
 }
 
 function drawPlayer() {
+  if (!playerImg.complete) return;
   ctx.save();
   ctx.translate(player.x, player.y);
   if (player.facing === 1) ctx.scale(-1, 1); // face right

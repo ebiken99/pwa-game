@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE = 'unkoyoke-v4';
+const CACHE = 'unkoyoke-v5';
 
 // Absolute paths matching the GitHub Pages deployment at /pwa-game/
 const BASE = '/pwa-game';
@@ -13,6 +13,7 @@ const ASSETS = [
   BASE + '/icons/apple-touch-icon.png',
   BASE + '/icons/icon-192.png',
   BASE + '/icons/icon-512.png',
+  BASE + '/IMG_8981.gif',
 ];
 
 // ---- Install: pre-cache all assets ----
