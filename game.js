@@ -17,7 +17,8 @@ const STATE = {
   WIN:      'win',
 };
 
-const LEVEL_DURATION = 30; // seconds per level
+const LEVEL_DURATION = 10; // seconds per level
+const VERSION = 'v1.5.0';
 
 /**
  * speed        : poop fall speed (px/s)
@@ -25,34 +26,36 @@ const LEVEL_DURATION = 30; // seconds per level
  * count        : how many poops can spawn simultaneously in a wave
  */
 const LEVEL_CONFIG = [
-  { speed: 130, spawnInterval: 2400, label: 'レベル 1', emoji: '🌱' },
-  { speed: 210, spawnInterval: 1900, label: 'レベル 2', emoji: '🌿' },
-  { speed: 300, spawnInterval: 1500, label: 'レベル 3', emoji: '🍀' },
-  { speed: 400, spawnInterval: 1150, label: 'レベル 4', emoji: '🔥' },
-  { speed: 510, spawnInterval:  850, label: 'レベル 5', emoji: '💀' },
+  { speed: 260,  spawnInterval: 2400, label: 'レベル 1',     emoji: '🌱' },
+  { speed: 420,  spawnInterval: 1900, label: 'レベル 2',     emoji: '🌿' },
+  { speed: 600,  spawnInterval: 1500, label: 'レベル 3',     emoji: '🍀' },
+  { speed: 800,  spawnInterval: 1150, label: 'レベル 4',     emoji: '🔥' },
+  { speed: 1020, spawnInterval:  850, label: 'レベル 5',     emoji: '💀' },
+  { speed: 1200, spawnInterval:  700, label: '👑 FINAL',     emoji: '👑' },
 ];
+const FINAL_LEVEL = LEVEL_CONFIG.length; // 6
 
-const POOP_EMOJI      = '💩';
-const PLAYER_SIZE     = 54;   // draw size for player image
-const POOP_SIZE       = 42;
 const PLAYER_SPEED    = 330;  // px/s
 const GROUND_H        = 28;   // grass height
+const POOP_EMOJI      = '💩';
+const POOP_SIZE       = 42;
+const GOLDEN_SIZE     = POOP_SIZE * 3;   // 3x normal poop (126px)
+const GOLDEN_INTERVAL = 2500;            // ms between golden poop spawns
+const STILL_THRESHOLD = 12;              // px: movement smaller than this = "still"
+const STILL_DELAY_MS  = 2000;            // ms of stillness before aimed poop fires
+const AIMED_INTERVAL_MS = 2500;          // ms between successive aimed poops
 
 const playerImg = new Image();
+let playerImgReady = false;
+playerImg.onload  = () => { playerImgReady = true; };
+playerImg.onerror = () => { playerImgReady = false; };
 playerImg.src = 'IMG_8981.gif';
 
-// ============================================================
-// Game State
-// ============================================================
-let state         = STATE.START;
-let currentLevel  = 1;
-let score         = 0;
-let levelTimer    = 0;   // seconds elapsed in current level
-let lastTs        = 0;
-let lastSpawnTs   = 0;
-let poops         = [];
-let animId        = null;
-let gameOverFlash = 0;   // countdown for red flash on game over
+// ── Cheat code: 5 taps in top-right corner within 5s ──
+let cheatTapCount = 0;
+let cheatFirstTs  = 0;
+const CHEAT_TAPS    = 5;
+const CHEAT_WINDOW  = 5000; // ms
 
 // ============================================================
 // Player
@@ -103,30 +106,82 @@ document.addEventListener('keyup', (e) => {
   if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
 });
 
-// Touch / Mouse controls
-const leftBtn  = document.getElementById('left-btn');
-const rightBtn = document.getElementById('right-btn');
-
-function bindBtn(btn, key) {
-  const press   = (e) => { e.preventDefault(); keys[key] = true;  btn.classList.add('pressed'); };
-  const release = (e) => { e.preventDefault(); keys[key] = false; btn.classList.remove('pressed'); };
-  btn.addEventListener('touchstart',  press,   { passive: false });
-  btn.addEventListener('touchend',    release, { passive: false });
-  btn.addEventListener('touchcancel', release, { passive: false });
-  btn.addEventListener('mousedown',   press);
-  btn.addEventListener('mouseup',     release);
-  btn.addEventListener('mouseleave',  release);
+// ── Touch zone: bottom half of screen ──────────────────
+// Left side  → move left
+// Right side → move right
+function updateKeysFromTouches(touches) {
+  if (state !== STATE.PLAYING) return;
+  keys.left  = false;
+  keys.right = false;
+  for (const t of touches) {
+    if (t.clientY > window.innerHeight / 2) {
+      if (t.clientX < window.innerWidth / 2) keys.left  = true;
+      else                                    keys.right = true;
+    }
+  }
 }
 
-bindBtn(leftBtn,  'left');
-bindBtn(rightBtn, 'right');
+// ── Cheat: 5 taps top-right corner within 5s → FINAL STAGE ──
+function checkCheatTap(clientX, clientY) {
+  const inCorner = clientX > window.innerWidth * 0.75 && clientY < window.innerHeight * 0.18;
+  if (!inCorner) return;
+  const now = Date.now();
+  if (cheatTapCount === 0 || now - cheatFirstTs > CHEAT_WINDOW) {
+    cheatTapCount = 1;
+    cheatFirstTs  = now;
+  } else {
+    cheatTapCount++;
+    if (cheatTapCount >= CHEAT_TAPS) {
+      cheatTapCount = 0;
+      activateCheat();
+    }
+  }
+}
+
+function activateCheat() {
+  initGame();
+  currentLevel = FINAL_LEVEL;
+  updateHUD();
+  state      = STATE.PLAYING;
+  cheatFlash = 1.0;
+  hideOverlay();
+  const now = performance.now();
+  lastTs            = now;
+  lastSpawnTs       = now;
+  lastGoldenSpawnTs = now;
+}
+
+const gameContainer = document.getElementById('game-container');
+gameContainer.addEventListener('touchstart', (e) => {
+  // Cheat check runs regardless of state
+  for (const t of e.changedTouches) checkCheatTap(t.clientX, t.clientY);
+  if (state !== STATE.PLAYING) return;
+  e.preventDefault();
+  updateKeysFromTouches(e.touches);
+}, { passive: false });
+gameContainer.addEventListener('touchmove',   (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchend',    (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+gameContainer.addEventListener('touchcancel', (e) => { if (state !== STATE.PLAYING) return; e.preventDefault(); updateKeysFromTouches(e.touches); }, { passive: false });
+
+// Mouse fallback for desktop
+gameContainer.addEventListener('mousedown', (e) => {
+  if (state !== STATE.PLAYING) return;
+  if (e.clientY > window.innerHeight / 2) {
+    keys.left  = e.clientX < window.innerWidth / 2;
+    keys.right = e.clientX >= window.innerWidth / 2;
+  }
+});
+gameContainer.addEventListener('mouseup', () => { keys.left = false; keys.right = false; });
 
 // ============================================================
 // Canvas resize
 // ============================================================
 function resizeCanvas() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
+  // Use the container's actual rendered size (reliable on both iOS & Android).
+  // The container is position:fixed;inset:0 so it always matches the visual viewport.
+  const container = canvas.parentElement;
+  canvas.width  = container.offsetWidth  || window.innerWidth;
+  canvas.height = container.offsetHeight || window.innerHeight;
   player.x = canvas.width  / 2;
   player.y = canvas.height - GROUND_H - 4;
   initClouds();
@@ -172,14 +227,18 @@ function triggerStart() {
     state = STATE.PLAYING;
     hideOverlay();
     const now = performance.now();
-    lastTs      = now;
-    lastSpawnTs = now;
+    lastTs            = now;
+    lastSpawnTs       = now;
+    lastGoldenSpawnTs = now;
   } else if (state === STATE.LEVELUP) {
     state = STATE.PLAYING;
     hideOverlay();
     const now = performance.now();
-    lastTs      = now;
-    lastSpawnTs = now;
+    lastTs            = now;
+    lastSpawnTs       = now;
+    lastGoldenSpawnTs = now;
+    playerStillX      = null;
+    playerStillMs     = 0;
   }
 }
 
@@ -189,33 +248,48 @@ overlayBtn.addEventListener('click', triggerStart);
 // Game init
 // ============================================================
 function initGame() {
-  currentLevel  = 1;
-  score         = 0;
-  levelTimer    = 0;
-  poops         = [];
-  gameOverFlash = 0;
-  player.x      = canvas.width  / 2;
-  player.y      = canvas.height - GROUND_H - 4;
+  currentLevel      = 1;
+  score             = 0;
+  levelTimer        = 0;
+  poops             = [];
+  gameOverFlash     = 0;
+  lastGoldenSpawnTs = 0;
+  playerStillX      = null;
+  playerStillMs     = 0;
+  lastAimedTs       = 0;
+  playerAnimTime    = 0;
+  player.x          = canvas.width  / 2;
+  player.y          = canvas.height - GROUND_H - 4;
   updateHUD();
 }
 
 // ============================================================
 // Spawn poop
 // ============================================================
-function spawnPoop(now) {
-  const margin = POOP_SIZE;
-  const x = margin + Math.random() * (canvas.width - margin * 2);
-  const cfg = LEVEL_CONFIG[currentLevel - 1];
-  poops.push({ x, y: -POOP_SIZE, speed: cfg.speed });
-  lastSpawnTs = now;
+function spawnPoop(now, golden = false) {
+  const isGolden = golden || currentLevel === FINAL_LEVEL; // level 6: all golden
+  const size     = isGolden ? GOLDEN_SIZE : POOP_SIZE;
+  const margin   = size * 0.6;
+  const x        = margin + Math.random() * (canvas.width - margin * 2);
+  const cfg      = LEVEL_CONFIG[currentLevel - 1];
+  poops.push({ x, y: -size, speed: cfg.speed, size, golden: isGolden });
+  if (golden) lastGoldenSpawnTs = now;
+  else        lastSpawnTs       = now;
+}
+
+function spawnAimedPoop(now) {
+  const isGolden = currentLevel === FINAL_LEVEL;
+  const size     = isGolden ? GOLDEN_SIZE : POOP_SIZE;
+  const cfg      = LEVEL_CONFIG[currentLevel - 1];
+  poops.push({ x: player.x, y: -size, speed: cfg.speed * 0.5, size, golden: isGolden, aimed: true });
+  lastAimedTs = now;
 }
 
 // ============================================================
 // Collision detection
 // ============================================================
 function hitTest(poop) {
-  const halfPoop = POOP_SIZE * 0.42;
-  // AABB
+  const halfPoop = poop.size * 0.42;
   return (
     player.x - player.hitW / 2 < poop.x + halfPoop &&
     player.x + player.hitW / 2 > poop.x - halfPoop &&
@@ -242,14 +316,41 @@ function update(now) {
     player.x = Math.min(canvas.width - player.hitW / 2 - 8, player.x + PLAYER_SPEED * dt);
     player.facing = 1;
   }
+  if (keys.left || keys.right) {
+    playerAnimTime += dt * 8; // running cycle speed
+  }
 
   // --- Level timer ---
   levelTimer += dt;
 
-  // --- Spawn ---
+  // --- Aimed poop: level 5+ fires at player when they stay still ---
+  if (currentLevel >= 5) {
+    if (playerStillX === null) {
+      playerStillX  = player.x;
+      playerStillMs = 0;
+    } else if (Math.abs(player.x - playerStillX) > STILL_THRESHOLD) {
+      // player moved – reset
+      playerStillX  = player.x;
+      playerStillMs = 0;
+    } else {
+      playerStillMs += dt * 1000;
+      if (playerStillMs >= STILL_DELAY_MS && now - lastAimedTs >= AIMED_INTERVAL_MS) {
+        spawnAimedPoop(now);
+      }
+    }
+  }
+
+  // --- Spawn: normal poop ---
   const cfg = LEVEL_CONFIG[currentLevel - 1];
   if (now - lastSpawnTs >= cfg.spawnInterval) {
     spawnPoop(now);
+  }
+
+  // --- Spawn: golden poop (level 5, last 5 seconds) ---
+  if (currentLevel === 5 && levelTimer >= LEVEL_DURATION - 5) {
+    if (now - lastGoldenSpawnTs >= GOLDEN_INTERVAL) {
+      spawnPoop(now, true);
+    }
   }
 
   // --- Clouds ---
@@ -289,12 +390,12 @@ function update(now) {
 
   // --- Level up check ---
   if (levelTimer >= LEVEL_DURATION) {
-    if (currentLevel >= LEVEL_CONFIG.length) {
+    if (currentLevel >= FINAL_LEVEL) {
       state = STATE.WIN;
       showOverlay(
-        '🎉',
-        'ゲームクリア！',
-        `全レベル制覇！おめでとう！<br>よけた数: <strong>${score} 個</strong>`,
+        '🏆',
+        '真のクリア！',
+        `ゴールデンうんこを全て回避！<br>伝説の勇者よ！<br>よけた数: <strong>${score} 個</strong>`,
         'もう一度'
       );
     } else {
@@ -304,10 +405,11 @@ function update(now) {
       state = STATE.LEVELUP;
       updateHUD();
       const nextCfg = LEVEL_CONFIG[currentLevel - 1];
+      const isFinal = currentLevel === FINAL_LEVEL;
       showOverlay(
         nextCfg.emoji,
-        `${nextCfg.label} スタート！`,
-        `うんこが速くなった！<br>気をつけろ！`,
+        isFinal ? '👑 FINAL STAGE 👑' : `${nextCfg.label} スタート！`,
+        isFinal ? '全てのうんこがゴールデン！<br>最後の試練を乗り越えろ！' : 'うんこが速くなった！<br>気をつけろ！',
         '続ける'
       );
     }
@@ -364,22 +466,137 @@ function drawBackground() {
 function drawPlayer() {
   if (!playerImg.complete) return;
   ctx.save();
-  if (player.facing === -1) {
-    ctx.translate(player.x, player.y);
-    ctx.scale(-1, 1);
-    ctx.drawImage(playerImg, -PLAYER_SIZE / 2, -PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
+  ctx.translate(player.x, player.y);
+  if (player.facing === 1) ctx.scale(-1, 1); // face right
+
+  const bob = Math.abs(Math.sin(playerAnimTime)) * 2;
+  ctx.translate(0, -bob);
+
+  if (playerImgReady) {
+    // GIF has white background — multiply blend makes white transparent on sky
+    const h = 84;
+    const w = 64;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(playerImg, -w / 2, -h, w, h);
+    ctx.globalCompositeOperation = 'source-over';
   } else {
-    ctx.drawImage(playerImg, player.x - PLAYER_SIZE / 2, player.y - PLAYER_SIZE, PLAYER_SIZE, PLAYER_SIZE);
+    const c   = Math.sin(playerAnimTime);
+    const leg = c * 20;
+    const arm = -c * 15;
+
+    const SKIN  = '#FFCC99';
+    const HAIR  = '#5D4037';
+    const SHIRT = '#1E88E5';
+    const PANTS = '#283593';
+    const SHOE  = '#1A1A1A';
+
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
+
+    // ── Back leg ──
+    ctx.strokeStyle = PANTS;
+    ctx.lineWidth   = 7;
+    ctx.beginPath();
+    ctx.moveTo( 3, -20);
+    ctx.lineTo( 3 + leg * 0.4, -10);
+    ctx.lineTo( 3 + leg * 0.7,   0);
+    ctx.stroke();
+
+    // ── Front leg ──
+    ctx.beginPath();
+    ctx.moveTo(-3, -20);
+    ctx.lineTo(-3 - leg * 0.4, -10);
+    ctx.lineTo(-3 - leg * 0.7,   0);
+    ctx.stroke();
+
+    // ── Shoes ──
+    ctx.fillStyle = SHOE;
+    ctx.beginPath(); ctx.ellipse( 3 + leg * 0.7, 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-3 - leg * 0.7, 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // ── Torso ──
+    ctx.fillStyle = SHIRT;
+    ctx.beginPath();
+    ctx.roundRect(-11, -40, 22, 22, 5);
+    ctx.fill();
+
+    // ── Back arm ──
+    ctx.strokeStyle = SKIN;
+    ctx.lineWidth   = 6;
+    ctx.beginPath();
+    ctx.moveTo( 9, -36);
+    ctx.lineTo( 9 + arm * 0.5, -28);
+    ctx.lineTo( 9 + arm,       -22);
+    ctx.stroke();
+
+    // ── Front arm ──
+    ctx.beginPath();
+    ctx.moveTo(-9, -36);
+    ctx.lineTo(-9 - arm * 0.5, -28);
+    ctx.lineTo(-9 - arm,       -22);
+    ctx.stroke();
+
+    // ── Neck ──
+    ctx.fillStyle = SKIN;
+    ctx.fillRect(-5, -44, 10, 6);
+
+    // ── Head ──
+    ctx.beginPath();
+    ctx.arc(0, -52, 13, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ── Hair ──
+    ctx.fillStyle = HAIR;
+    ctx.beginPath();
+    ctx.arc(0, -52, 13, Math.PI * 1.1, Math.PI * 2 - 0.08);
+    ctx.lineTo(0, -52);
+    ctx.closePath();
+    ctx.fill();
+
+    // ── Eyes ──
+    ctx.fillStyle = '#1A1A1A';
+    ctx.beginPath(); ctx.arc(-5,  -52, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 5,  -52, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.arc(-4, -53, 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 6, -53, 0.9, 0, Math.PI * 2); ctx.fill();
+
+    // ── Mouth ──
+    ctx.strokeStyle = '#CC4444';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, -49, 4, 0.2, Math.PI - 0.2);
+    ctx.stroke();
   }
+
   ctx.restore();
 }
 
 function drawPoops() {
-  ctx.font         = `${POOP_SIZE}px serif`;
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';
   for (const p of poops) {
+    ctx.save();
+    if (p.golden) {
+      // Pulsing gold glow background
+      const pulse = 0.5 + 0.5 * Math.sin(levelTimer * 8);
+      ctx.fillStyle = `rgba(255, 215, 0, ${0.25 + pulse * 0.2})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.52, 0, Math.PI * 2);
+      ctx.fill();
+      // Gold ring
+      ctx.strokeStyle = `rgba(255, 200, 0, ${0.6 + pulse * 0.4})`;
+      ctx.lineWidth   = 5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      // Glow on the emoji itself
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur  = 28;
+    }
+    ctx.font = `${p.size}px serif`;
     ctx.fillText(POOP_EMOJI, p.x, p.y);
+    ctx.restore();
   }
 }
 
@@ -417,11 +634,89 @@ function drawLevelProgress() {
   ctx.fillText(`残り ${remaining}秒`, canvas.width - 12, barY - 9);
 }
 
+
+function drawVersion() {
+  ctx.save();
+  ctx.font         = '11px monospace';
+  ctx.textAlign    = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle    = 'rgba(255,255,255,0.45)';
+  ctx.fillText(VERSION, 8, 8);
+  ctx.restore();
+}
+
 function drawGameOverFlash() {
   if (gameOverFlash <= 0) return;
   ctx.fillStyle = `rgba(220, 30, 30, ${gameOverFlash * 0.5})`;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   gameOverFlash -= 0.04;
+}
+
+function drawGoldenWarning() {
+  if (state !== STATE.PLAYING) return;
+  const isFinal      = currentLevel === FINAL_LEVEL;
+  const isLevel5rush = currentLevel === 5 && levelTimer >= LEVEL_DURATION - 5;
+  if (!isFinal && !isLevel5rush) return;
+
+  const pulse = 0.5 + 0.5 * Math.sin(levelTimer * 6);
+  ctx.fillStyle = `rgba(255, 200, 0, ${isFinal ? 0.08 + pulse * 0.07 : 0.06 + pulse * 0.06})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const bannerY = canvas.height * 0.18;
+  ctx.save();
+  ctx.font         = `bold ${Math.round(canvas.width * 0.048)}px Arial, sans-serif`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = `rgba(255, 210, 0, ${0.8 + pulse * 0.2})`;
+  ctx.shadowColor  = '#FFD700';
+  ctx.shadowBlur   = 16;
+  ctx.fillText(
+    isFinal ? '👑 FINAL STAGE 👑' : '👑 ゴールデンうんこ出現！ 👑',
+    canvas.width / 2, bannerY
+  );
+  ctx.restore();
+}
+
+function drawAimedWarning() {
+  if (state !== STATE.PLAYING || currentLevel < 5) return;
+  if (!playerStillX || playerStillMs < 400) return;
+
+  const progress = Math.min(playerStillMs / STILL_DELAY_MS, 1);
+  const groundY  = canvas.height - GROUND_H + 4;
+  const rx       = 18 + progress * 22;
+  const alpha    = 0.35 + progress * 0.5;
+
+  ctx.save();
+  ctx.strokeStyle = `rgba(255, 60, 60, ${alpha})`;
+  ctx.lineWidth   = 2.5;
+  // Elliptical shadow on ground
+  ctx.beginPath();
+  ctx.ellipse(playerStillX, groundY, rx, rx * 0.28, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Cross
+  ctx.beginPath();
+  ctx.moveTo(playerStillX - rx, groundY);
+  ctx.lineTo(playerStillX + rx, groundY);
+  ctx.moveTo(playerStillX, groundY - rx * 0.28 - 6);
+  ctx.lineTo(playerStillX, groundY + rx * 0.28 + 6);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawCheatFlash() {
+  if (cheatFlash <= 0) return;
+  ctx.fillStyle = `rgba(255, 215, 0, ${cheatFlash * 0.6})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  ctx.font         = `bold ${Math.round(canvas.width * 0.07)}px Arial, sans-serif`;
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle    = `rgba(255, 255, 255, ${cheatFlash})`;
+  ctx.shadowColor  = '#FFD700';
+  ctx.shadowBlur   = 20;
+  ctx.fillText('👑 FINAL STAGE 解放！ 👑', canvas.width / 2, canvas.height / 2);
+  ctx.restore();
+  cheatFlash -= 0.025;
 }
 
 // ============================================================
@@ -431,10 +726,14 @@ function gameLoop(now) {
   update(now);
 
   drawBackground();
+  drawAimedWarning();
   drawPoops();
+  drawGoldenWarning();
   drawPlayer();
   drawLevelProgress();
   drawGameOverFlash();
+  drawCheatFlash();
+  drawVersion();
 
   animId = requestAnimationFrame(gameLoop);
 }
