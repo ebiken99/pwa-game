@@ -18,6 +18,7 @@ const STATE = {
 };
 
 const LEVEL_DURATION = 10; // seconds per level
+const VERSION = 'v1.5.0';
 
 /**
  * speed        : poop fall speed (px/s)
@@ -654,6 +655,16 @@ function drawLevelProgress() {
 }
 
 
+function drawVersion() {
+  ctx.save();
+  ctx.font         = '11px monospace';
+  ctx.textAlign    = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillStyle    = 'rgba(255,255,255,0.45)';
+  ctx.fillText(VERSION, 8, 8);
+  ctx.restore();
+}
+
 function drawGameOverFlash() {
   if (gameOverFlash <= 0) return;
   ctx.fillStyle = `rgba(220, 30, 30, ${gameOverFlash * 0.5})`;
@@ -742,6 +753,7 @@ function gameLoop(now) {
   drawLevelProgress();
   drawGameOverFlash();
   drawCheatFlash();
+  drawVersion();
 
   animId = requestAnimationFrame(gameLoop);
 }
