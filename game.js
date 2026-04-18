@@ -45,16 +45,10 @@ const STILL_THRESHOLD = 12;              // px: movement smaller than this = "st
 const STILL_DELAY_MS  = 2000;            // ms of stillness before aimed poop fires
 const AIMED_INTERVAL_MS = 2500;          // ms between successive aimed poops
 
-const playerImg = new Image();
+const playerGifEl = document.getElementById('player-gif');
 let playerImgReady = false;
-playerImg.onload  = () => {
-  playerImgReady = true;
-  // Keep in DOM (hidden) so browsers continue animating the GIF
-  playerImg.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;width:1px;height:1px;';
-  document.body.appendChild(playerImg);
-};
-playerImg.onerror = () => { playerImgReady = false; };
-playerImg.src = 'IMG_8981.gif';
+playerGifEl.onload  = () => { playerImgReady = true; };
+playerGifEl.onerror = () => { playerImgReady = false; };
 
 // ============================================================
 // Game State
@@ -487,8 +481,20 @@ function drawBackground() {
   ctx.fillRect(0, canvas.height - GROUND_H, canvas.width, 5);
 }
 
+function updatePlayerGif() {
+  if (!playerImgReady || state !== STATE.PLAYING) {
+    playerGifEl.style.display = 'none';
+    return;
+  }
+  const w = 80, h = 80;
+  const left = Math.round(player.x - w / 2);
+  const top  = Math.round(player.y - h);
+  const flip = player.facing === 1 ? -1 : 1;
+  playerGifEl.style.cssText = `position:absolute;pointer-events:none;width:${w}px;height:${h}px;left:${left}px;top:${top}px;transform:scaleX(${flip});image-rendering:auto;`;
+}
+
 function drawPlayer() {
-  if (!playerImg.complete) return;
+  if (playerImgReady) return; // HTML img element handles rendering
   ctx.save();
   ctx.translate(player.x, player.y);
   if (player.facing === 1) ctx.scale(-1, 1); // face right
@@ -496,14 +502,7 @@ function drawPlayer() {
   const bob = Math.abs(Math.sin(playerAnimTime)) * 2;
   ctx.translate(0, -bob);
 
-  if (playerImgReady) {
-    // GIF has white background — multiply blend makes white transparent on sky
-    const h = 84;
-    const w = 64;
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.drawImage(playerImg, -w / 2, -h, w, h);
-    ctx.globalCompositeOperation = 'source-over';
-  } else {
+  {
     const c   = Math.sin(playerAnimTime);
     const leg = c * 20;
     const arm = -c * 15;
@@ -754,6 +753,7 @@ function gameLoop(now) {
   drawPoops();
   drawGoldenWarning();
   drawPlayer();
+  updatePlayerGif();
   drawLevelProgress();
   drawGameOverFlash();
   drawCheatFlash();
