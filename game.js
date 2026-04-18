@@ -63,6 +63,14 @@ let playerStillMs     = 0;
 let lastAimedTs       = 0;
 let playerAnimTime    = 0;    // advances while moving, drives run animation
 
+// ── Player image (GIF from external URL, canvas fallback if 403) ──
+const PLAYER_IMG_URL = 'https://illust55.com/storage/2021/05/%E5%85%A8%E5%8A%9B%E3%81%A7%E8%B5%B0%E3%82%8B%E9%80%9A%E5%8B%A4%E3%81%AE%E3%82%B5%E3%83%A9%E3%83%AA%E3%83%BC%E3%83%9E%E3%83%B3%EF%BC%86%E9%81%85%E5%88%BB%E5%AF%8B%E5%89%8D%E3%83%80%E3%83%83%E3%82%B7%E3%83%A5%E3%81%AE%E7%A4%BE%E4%BC%9A%E4%BA%BA%EF%BC%9AGIF%E3%82%A2%E3%83%8B%E3%83%A1.gif';
+const playerImg = new Image();
+let playerImgReady = false;
+playerImg.onload  = () => { playerImgReady = true; };
+playerImg.onerror = () => { playerImgReady = false; };
+playerImg.src = PLAYER_IMG_URL;
+
 // ── Cheat code: 5 taps in top-right corner within 5s ──
 let cheatTapCount = 0;
 let cheatFirstTs  = 0;
@@ -480,96 +488,105 @@ function drawPlayer() {
   ctx.translate(player.x, player.y);
   if (player.facing === 1) ctx.scale(-1, 1); // face right
 
-  const c   = Math.sin(playerAnimTime);   // -1…1 run cycle
-  const bob = Math.abs(c) * 2;            // slight vertical bounce
+  const bob = Math.abs(Math.sin(playerAnimTime)) * 2;
   ctx.translate(0, -bob);
 
-  const leg = c * 20;   // leg swing px
-  const arm = -c * 15;  // arm swing px (counter-phase)
+  if (playerImgReady) {
+    // GIF has white background — multiply blend makes white transparent on sky
+    const h = 84;
+    const w = 64;
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.drawImage(playerImg, -w / 2, -h, w, h);
+    ctx.globalCompositeOperation = 'source-over';
+  } else {
+    const c   = Math.sin(playerAnimTime);
+    const leg = c * 20;
+    const arm = -c * 15;
 
-  const SKIN  = '#FFCC99';
-  const HAIR  = '#5D4037';
-  const SHIRT = '#1E88E5';
-  const PANTS = '#283593';
-  const SHOE  = '#1A1A1A';
+    const SKIN  = '#FFCC99';
+    const HAIR  = '#5D4037';
+    const SHIRT = '#1E88E5';
+    const PANTS = '#283593';
+    const SHOE  = '#1A1A1A';
 
-  ctx.lineCap  = 'round';
-  ctx.lineJoin = 'round';
+    ctx.lineCap  = 'round';
+    ctx.lineJoin = 'round';
 
-  // ── Back leg ──
-  ctx.strokeStyle = PANTS;
-  ctx.lineWidth   = 7;
-  ctx.beginPath();
-  ctx.moveTo( 3, -20);
-  ctx.lineTo( 3 + leg * 0.4, -10);
-  ctx.lineTo( 3 + leg * 0.7,   0);
-  ctx.stroke();
+    // ── Back leg ──
+    ctx.strokeStyle = PANTS;
+    ctx.lineWidth   = 7;
+    ctx.beginPath();
+    ctx.moveTo( 3, -20);
+    ctx.lineTo( 3 + leg * 0.4, -10);
+    ctx.lineTo( 3 + leg * 0.7,   0);
+    ctx.stroke();
 
-  // ── Front leg ──
-  ctx.beginPath();
-  ctx.moveTo(-3, -20);
-  ctx.lineTo(-3 - leg * 0.4, -10);
-  ctx.lineTo(-3 - leg * 0.7,   0);
-  ctx.stroke();
+    // ── Front leg ──
+    ctx.beginPath();
+    ctx.moveTo(-3, -20);
+    ctx.lineTo(-3 - leg * 0.4, -10);
+    ctx.lineTo(-3 - leg * 0.7,   0);
+    ctx.stroke();
 
-  // ── Shoes ──
-  ctx.fillStyle = SHOE;
-  ctx.beginPath(); ctx.ellipse( 3 + leg * 0.7, 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(-3 - leg * 0.7, 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // ── Shoes ──
+    ctx.fillStyle = SHOE;
+    ctx.beginPath(); ctx.ellipse( 3 + leg * 0.7, 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-3 - leg * 0.7, 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
 
-  // ── Torso ──
-  ctx.fillStyle = SHIRT;
-  ctx.beginPath();
-  ctx.roundRect(-11, -40, 22, 22, 5);
-  ctx.fill();
+    // ── Torso ──
+    ctx.fillStyle = SHIRT;
+    ctx.beginPath();
+    ctx.roundRect(-11, -40, 22, 22, 5);
+    ctx.fill();
 
-  // ── Back arm ──
-  ctx.strokeStyle = SKIN;
-  ctx.lineWidth   = 6;
-  ctx.beginPath();
-  ctx.moveTo( 9, -36);
-  ctx.lineTo( 9 + arm * 0.5, -28);
-  ctx.lineTo( 9 + arm,       -22);
-  ctx.stroke();
+    // ── Back arm ──
+    ctx.strokeStyle = SKIN;
+    ctx.lineWidth   = 6;
+    ctx.beginPath();
+    ctx.moveTo( 9, -36);
+    ctx.lineTo( 9 + arm * 0.5, -28);
+    ctx.lineTo( 9 + arm,       -22);
+    ctx.stroke();
 
-  // ── Front arm ──
-  ctx.beginPath();
-  ctx.moveTo(-9, -36);
-  ctx.lineTo(-9 - arm * 0.5, -28);
-  ctx.lineTo(-9 - arm,       -22);
-  ctx.stroke();
+    // ── Front arm ──
+    ctx.beginPath();
+    ctx.moveTo(-9, -36);
+    ctx.lineTo(-9 - arm * 0.5, -28);
+    ctx.lineTo(-9 - arm,       -22);
+    ctx.stroke();
 
-  // ── Neck ──
-  ctx.fillStyle = SKIN;
-  ctx.fillRect(-5, -44, 10, 6);
+    // ── Neck ──
+    ctx.fillStyle = SKIN;
+    ctx.fillRect(-5, -44, 10, 6);
 
-  // ── Head ──
-  ctx.beginPath();
-  ctx.arc(0, -52, 13, 0, Math.PI * 2);
-  ctx.fill();
+    // ── Head ──
+    ctx.beginPath();
+    ctx.arc(0, -52, 13, 0, Math.PI * 2);
+    ctx.fill();
 
-  // ── Hair ──
-  ctx.fillStyle = HAIR;
-  ctx.beginPath();
-  ctx.arc(0, -52, 13, Math.PI * 1.1, Math.PI * 2 - 0.08);
-  ctx.lineTo(0, -52);
-  ctx.closePath();
-  ctx.fill();
+    // ── Hair ──
+    ctx.fillStyle = HAIR;
+    ctx.beginPath();
+    ctx.arc(0, -52, 13, Math.PI * 1.1, Math.PI * 2 - 0.08);
+    ctx.lineTo(0, -52);
+    ctx.closePath();
+    ctx.fill();
 
-  // ── Eyes ──
-  ctx.fillStyle = '#1A1A1A';
-  ctx.beginPath(); ctx.arc(-5,  -52, 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc( 5,  -52, 2.2, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'white';
-  ctx.beginPath(); ctx.arc(-4, -53, 0.9, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc( 6, -53, 0.9, 0, Math.PI * 2); ctx.fill();
+    // ── Eyes ──
+    ctx.fillStyle = '#1A1A1A';
+    ctx.beginPath(); ctx.arc(-5,  -52, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 5,  -52, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.beginPath(); ctx.arc(-4, -53, 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc( 6, -53, 0.9, 0, Math.PI * 2); ctx.fill();
 
-  // ── Mouth ──
-  ctx.strokeStyle = '#CC4444';
-  ctx.lineWidth   = 1.5;
-  ctx.beginPath();
-  ctx.arc(0, -49, 4, 0.2, Math.PI - 0.2);
-  ctx.stroke();
+    // ── Mouth ──
+    ctx.strokeStyle = '#CC4444';
+    ctx.lineWidth   = 1.5;
+    ctx.beginPath();
+    ctx.arc(0, -49, 4, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }
