@@ -34,14 +34,12 @@ const LEVEL_CONFIG = [
 ];
 const FINAL_LEVEL = LEVEL_CONFIG.length; // 6
 
-const PLAYER_EMOJI    = '🏃';
-const POOP_EMOJI      = '💩';
-const PLAYER_SIZE     = 54;   // font-size used for drawing
-const POOP_SIZE       = 42;
 const PLAYER_SPEED    = 330;  // px/s
 const GROUND_H        = 28;   // grass height
 const GOLDEN_SIZE     = POOP_SIZE * 3;   // 3x normal poop (126px)
 const GOLDEN_INTERVAL = 2500;            // ms between golden poop spawns
+const POOP_EMOJI      = '💩';
+const POOP_SIZE       = 42;
 const STILL_THRESHOLD = 12;              // px: movement smaller than this = "still"
 const STILL_DELAY_MS  = 2000;            // ms of stillness before aimed poop fires
 const AIMED_INTERVAL_MS = 2500;          // ms between successive aimed poops
@@ -60,9 +58,10 @@ let animId            = null;
 let gameOverFlash     = 0;
 let lastGoldenSpawnTs = 0;
 let cheatFlash        = 0;
-let playerStillX      = null; // x when player last started being still
-let playerStillMs     = 0;    // accumulated ms of stillness
-let lastAimedTs       = 0;    // performance.now() of last aimed spawn
+let playerStillX      = null;
+let playerStillMs     = 0;
+let lastAimedTs       = 0;
+let playerAnimTime    = 0;    // advances while moving, drives run animation
 
 // ── Cheat code: 5 taps in top-right corner within 5s ──
 let cheatTapCount = 0;
@@ -270,6 +269,7 @@ function initGame() {
   playerStillX      = null;
   playerStillMs     = 0;
   lastAimedTs       = 0;
+  playerAnimTime    = 0;
   player.x          = canvas.width  / 2;
   player.y          = canvas.height - GROUND_H - 4;
   updateHUD();
@@ -327,6 +327,9 @@ function update(now) {
   if (keys.right) {
     player.x = Math.min(canvas.width - player.hitW / 2 - 8, player.x + PLAYER_SPEED * dt);
     player.facing = 1;
+  }
+  if (keys.left || keys.right) {
+    playerAnimTime += dt * 8; // running cycle speed
   }
 
   // --- Level timer ---
@@ -474,17 +477,100 @@ function drawBackground() {
 
 function drawPlayer() {
   ctx.save();
-  ctx.font = `${PLAYER_SIZE}px serif`;
-  ctx.textAlign    = 'center';
-  ctx.textBaseline = 'bottom';
-  if (player.facing === 1) {
-    // 🏃 is left-facing by default → flip horizontally to face right
-    ctx.translate(player.x, player.y);
-    ctx.scale(-1, 1);
-    ctx.fillText(PLAYER_EMOJI, 0, 0);
-  } else {
-    ctx.fillText(PLAYER_EMOJI, player.x, player.y);
-  }
+  ctx.translate(player.x, player.y);
+  if (player.facing === 1) ctx.scale(-1, 1); // face right
+
+  const c   = Math.sin(playerAnimTime);   // -1…1 run cycle
+  const bob = Math.abs(c) * 2;            // slight vertical bounce
+  ctx.translate(0, -bob);
+
+  const leg = c * 20;   // leg swing px
+  const arm = -c * 15;  // arm swing px (counter-phase)
+
+  const SKIN  = '#FFCC99';
+  const HAIR  = '#5D4037';
+  const SHIRT = '#1E88E5';
+  const PANTS = '#283593';
+  const SHOE  = '#1A1A1A';
+
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+
+  // ── Back leg ──
+  ctx.strokeStyle = PANTS;
+  ctx.lineWidth   = 7;
+  ctx.beginPath();
+  ctx.moveTo( 3, -20);
+  ctx.lineTo( 3 + leg * 0.4, -10);
+  ctx.lineTo( 3 + leg * 0.7,   0);
+  ctx.stroke();
+
+  // ── Front leg ──
+  ctx.beginPath();
+  ctx.moveTo(-3, -20);
+  ctx.lineTo(-3 - leg * 0.4, -10);
+  ctx.lineTo(-3 - leg * 0.7,   0);
+  ctx.stroke();
+
+  // ── Shoes ──
+  ctx.fillStyle = SHOE;
+  ctx.beginPath(); ctx.ellipse( 3 + leg * 0.7, 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-3 - leg * 0.7, 2, 8, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+  // ── Torso ──
+  ctx.fillStyle = SHIRT;
+  ctx.beginPath();
+  ctx.roundRect(-11, -40, 22, 22, 5);
+  ctx.fill();
+
+  // ── Back arm ──
+  ctx.strokeStyle = SKIN;
+  ctx.lineWidth   = 6;
+  ctx.beginPath();
+  ctx.moveTo( 9, -36);
+  ctx.lineTo( 9 + arm * 0.5, -28);
+  ctx.lineTo( 9 + arm,       -22);
+  ctx.stroke();
+
+  // ── Front arm ──
+  ctx.beginPath();
+  ctx.moveTo(-9, -36);
+  ctx.lineTo(-9 - arm * 0.5, -28);
+  ctx.lineTo(-9 - arm,       -22);
+  ctx.stroke();
+
+  // ── Neck ──
+  ctx.fillStyle = SKIN;
+  ctx.fillRect(-5, -44, 10, 6);
+
+  // ── Head ──
+  ctx.beginPath();
+  ctx.arc(0, -52, 13, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ── Hair ──
+  ctx.fillStyle = HAIR;
+  ctx.beginPath();
+  ctx.arc(0, -52, 13, Math.PI * 1.1, Math.PI * 2 - 0.08);
+  ctx.lineTo(0, -52);
+  ctx.closePath();
+  ctx.fill();
+
+  // ── Eyes ──
+  ctx.fillStyle = '#1A1A1A';
+  ctx.beginPath(); ctx.arc(-5,  -52, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 5,  -52, 2.2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'white';
+  ctx.beginPath(); ctx.arc(-4, -53, 0.9, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc( 6, -53, 0.9, 0, Math.PI * 2); ctx.fill();
+
+  // ── Mouth ──
+  ctx.strokeStyle = '#CC4444';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, -49, 4, 0.2, Math.PI - 0.2);
+  ctx.stroke();
+
   ctx.restore();
 }
 
